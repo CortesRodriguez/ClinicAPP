@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Reservar Hora{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h2 fw-bold">Agendar nueva cita</h1>
+    <p class="text-muted">Completa los pasos para asegurar tu atención médica hoy.</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="form-card shadow-sm p-4 bg-white rounded-4">
+            <form action="/reservar" method="POST">
+                
+                <div class="d-flex align-items-center mb-4">
+                    <div class="step-number">1</div>
+                    <span class="step-title">Selección de Especialista</span>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Especialidad</label>
+                        <select id="filtro_especialidad" class="form-select" onchange="filtrarMedicos()">
+                            <option value="">-- Todas las especialidades --</option>
+                            {% for esp in especialidades %}
+                                <option value="{{ esp }}">{{ esp }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Médico</label>
+                        <select name="medico_id" id="medico_select" class="form-select" onchange="actualizarHoras(this.value)" required>
+                            <option value="">-- Selecciona un médico --</option>
+                            {% for medico in medicos %}
+                                <option value="{{ medico.id }}" data-especialidad="{{ medico.especialidad }}">
+                                    {{ medico.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div id="seccion_horas" style="display:none;">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="step-number">2</div>
+                        <span class="step-title">Horarios Disponibles</span>
+                    </div>
+                    <div class="mb-4 p-3 bg-light rounded-3">
+                        <label class="form-label d-block mb-3">Selecciona una hora de atención:</label>
+                        <select name="hora_seleccionada" id="lista_horas" class="form-select w-50" onchange="mostrarFormularioPaciente()" required>
+                            <option value="">-- Selecciona una hora --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="datos_paciente" style="display:none;">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="step-number">3</div>
+                        <span class="step-title">Información del Paciente</span>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre Completo</label>
+                            <input type="text" name="nombre_paciente" class="form-control" placeholder="Ej: Juan Pérez" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">RUT</label>
+                            <input type="text" name="rut_paciente" class="form-control" placeholder="12345678-9" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="correo_paciente" class="form-control" placeholder="correo@ejemplo.com" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Celular</label>
+                            <input type="tel" name="celular_paciente" class="form-control" placeholder="+569 1234 5678" required>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="medico_id_final" id="medico_id_final">
+                    
+                    <div class="mt-4 pt-3 border-top text-end">
+                        <button type="submit" class="btn btn-primary btn-reserve px-5 rounded-pill">
+                            Confirmar Cita Médica <i class="bi bi-check-circle ms-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white" style="background-color: #0d6efd;">
+            <h5><i class="bi bi-info-circle me-2"></i> Recordatorio</h5>
+            <p class="small mb-0 opacity-75">Las citas son solo para hoy. Asegúrate de llegar 15 minutos antes.</p>
+        </div>
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+            <h6 class="fw-bold mb-3">¿Necesitas ayuda?</h6>
+            <div class="small text-muted mb-2"><i class="bi bi-telephone text-primary me-2"></i>+56 2 2345 6789</div>
+            <div class="small text-muted"><i class="bi bi-envelope text-primary me-2"></i>soporte@saludplus.cl</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filtrarMedicos() {
+        let especialidad = document.getElementById('filtro_especialidad').value;
+        let selectMedico = document.getElementById('medico_select');
+        let opciones = selectMedico.getElementsByTagName('option');
+        for (let i = 0; i < opciones.length; i++) {
+            let espMedico = opciones[i].getAttribute('data-especialidad');
+            opciones[i].style.display = (especialidad === "" || espMedico === especialidad) ? "" : "none";
+        }
+        selectMedico.value = "";
+        document.getElementById('seccion_horas').style.display = 'none';
+        document.getElementById('datos_paciente').style.display = 'none';
+    }
+
+    function actualizarHoras(medicoId) {
+        const divHoras = document.getElementById('seccion_horas');
+        const selectHoras = document.getElementById('lista_horas');
+        const divDatos = document.getElementById('datos_paciente');
+        if (!medicoId) { divHoras.style.display = 'none'; divDatos.style.display = 'none'; return; }
+        
+        fetch('/horas-disponibles/' + medicoId)
+            .then(response => response.json())
+            .then(horas => {
+                selectHoras.innerHTML = '<option value="">-- Selecciona una hora --</option>'; 
+                horas.forEach(h => {
+                    let opt = document.createElement('option');
+                    opt.value = h; opt.text = h;
+                    selectHoras.add(opt);
+                });
+                divHoras.style.display = 'block';
+                divDatos.style.display = 'none';
+            });
+    }
+
+    function mostrarFormularioPaciente() {
+        const hora = document.getElementById('lista_horas').value;
+        const divDatos = document.getElementById('datos_paciente');
+        const medicoId = document.getElementById('medico_select').value;
+        if (hora) {
+            divDatos.style.display = 'block';
+            document.getElementById('medico_id_final').value = medicoId;
+        } else {
+            divDatos.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

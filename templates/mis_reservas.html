@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Agenda{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h1 class="h2 fw-bold m-0">Agenda</h1>
+        <p class="text-muted">{{ fecha_actual_formateada }}</p>
+    </div>
+    <a href="/seccion-reservas" class="btn btn-primary px-4 py-2 rounded-3 fw-bold">
+        <i class="bi bi-plus-lg me-2"></i>Nueva Cita
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        {% for cita in citas %}
+        <div class="cita-card selectable-card shadow-sm p-3 mb-3 bg-white" 
+             style="cursor: pointer; border-radius: 15px; border: 1px solid rgba(0,0,0,0.05);"
+             onclick="verDetalle(this)"
+             data-id="{{ cita.id }}"
+             data-medico="{{ cita.medico.nombre }}"
+             data-paciente="{{ cita.paciente.nombre }}"
+             data-rut="{{ cita.paciente.rut }}"
+             data-especialidad="{{ cita.medico.especialidad }}"
+             data-correo="{{ cita.paciente.correo }}"
+             data-celular="{{ cita.paciente.celular }}">
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="time-badge d-flex flex-column align-items-start">
+                    <div class="fw-bold text-primary">
+                        <i class="bi bi-clock"></i> {{ cita.fecha_hora.strftime('%H:%M') }}
+                    </div>
+                    <div class="text-muted" style="font-size: 0.75rem">
+                        <i class="bi bi-calendar-event"></i> {{ cita.fecha_hora.strftime('%d/%m/%Y') }}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold">{{ cita.medico.nombre }}</div>
+                    <div class="text-muted small">{{ cita.paciente.nombre }}</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center p-5 bg-white rounded-4 border">
+            <p class="text-muted m-0">No hay citas registradas.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="col-md-5">
+        <div id="panel-vacio" class="card border-0 shadow-sm h-100 rounded-4 d-flex align-items-center justify-content-center text-muted p-5 text-center" 
+             style="border-radius: 20px; background: white; min-height: 450px">
+            <i class="bi bi-calendar-range fs-1 mb-3 opacity-25"></i>
+            <p>Selecciona una cita para ver los detalles adicionales</p>
+        </div>
+
+        <div id="panel-detalle" class="cita-card shadow-sm p-4 bg-white" 
+             style="display: none; border-radius: 20px; position: sticky; top: 20px;">
+            <h4 class="fw-bold mb-4">Detalles de la Cita</h4>
+
+            {% set fields = [
+                ('det-medico', 'Médico', 'stethoscope', 'bg-blue-soft'),
+                ('det-paciente', 'Paciente', 'person', 'bg-purple-soft'),
+                ('det-rut', 'RUT', 'card-text', 'bg-light'),
+                ('det-especialidad', 'Especialidad', 'activity', 'bg-teal-soft'),
+                ('det-correo', 'Correo', 'envelope', 'bg-light'),
+                ('det-celular', 'Celular', 'telephone', 'bg-light')
+            ] %}
+
+            {% for id, label, icon, color in fields %}
+            <div class="info-row d-flex align-items-center gap-3 mb-3">
+                <div class="icon-box {{ color }} rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-{{ icon }}"></i>
+                </div>
+                <div>
+                    <p class="label text-muted small mb-0">{{ label }}</p>
+                    <p class="value fw-bold mb-0" id="{{ id }}"></p>
+                </div>
+            </div>
+            {% endfor %}
+
+            <hr class="my-4" />
+
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="toggleEdit()">
+                    <i class="bi bi-pencil me-2"></i>Editar Hora
+                </button>
+                <a id="link-eliminar" href="#" class="btn btn-outline-danger btn-sm rounded-pill" 
+                   onclick="return confirm('¿Seguro que quieres eliminar esta reserva?');">
+                    <i class="bi bi-trash me-2"></i>Eliminar Reserva
+                </a>
+            </div>
+
+            <div id="form-edicion-detalle" style="display: none" class="mt-3 p-3 bg-light rounded-3">
+                <form id="form-update" action="" method="POST" class="d-flex gap-2 align-items-center">
+                    <input type="time" name="nueva_hora" class="form-control form-control-sm" required />
+                    <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function verDetalle(elemento) {
+    const panelVacio = document.getElementById("panel-vacio");
+    const panelDetalle = document.getElementById("panel-detalle");
+    const formEdicion = document.getElementById("form-edicion-detalle");
+
+    if (panelVacio) panelVacio.style.setProperty("display", "none", "important");
+    if (panelDetalle) panelDetalle.style.setProperty("display", "block", "important");
+    if (formEdicion) formEdicion.style.display = "none";
+
+    const d = elemento.dataset;
+
+    document.getElementById("det-medico").innerText = d.medico || "No asignado";
+    document.getElementById("det-paciente").innerText = d.paciente || "No asignado";
+    document.getElementById("det-rut").innerText = d.rut || "N/A";
+    document.getElementById("det-especialidad").innerText = d.especialidad || "General";
+    document.getElementById("det-correo").innerText = d.correo || "Sin correo";
+    document.getElementById("det-celular").innerText = d.celular || "Sin celular";
+
+    document.getElementById("link-eliminar").href = "/eliminar-cita/" + d.id;
+    document.getElementById("form-update").action = "/editar-cita/" + d.id;
+
+    document.querySelectorAll(".selectable-card").forEach((c) => {
+      c.style.border = "1px solid rgba(0,0,0,0.05)";
+      c.style.backgroundColor = "white";
+    });
+    elemento.style.border = "2px solid #0d6efd";
+    elemento.style.backgroundColor = "#f0f7ff";
+  }
+
+  function toggleEdit() {
+    const form = document.getElementById("form-edicion-detalle");
+    form.style.display = form.style.display === "none" ? "block" : "none";
+  }
+</script>
+{% endblock %}
